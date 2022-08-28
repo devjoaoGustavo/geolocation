@@ -1,0 +1,20 @@
+default: &default
+  adapter: postgresql
+  encoding: unicode
+  pool: <%= ENV.fetch("RAILS_MAX_THREADS") { 400 } %>
+  username: coisa
+  password: coisa123
+  host: localhost
+  port: 5432
+
+development:
+  <<: *default
+  database: geolocation_development
+
+test:
+  <<: *default
+  database: geolocation_test
+
+production:
+  <<: *default
+  url: <%= ENV['DATABASE_URL'] %>
