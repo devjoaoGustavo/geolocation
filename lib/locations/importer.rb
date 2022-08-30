@@ -23,7 +23,7 @@ module Locations
       records = {}
       seen = {}
 
-      Rails.logger.info 'starting...'
+      $stdout.puts 'checking and storing...'
       time = Benchmark.realtime {
         validation = Benchmark.realtime {
           CSV.foreach(filename, headers: true) do |row|
@@ -36,16 +36,18 @@ module Locations
             records[ip_address] = row.to_h
           end
         }
-        Rails.logger.info "#{validation} seconds to validate"
+        $stdout.puts "\t#{validation} seconds to validate"
         persistence_time = Benchmark.realtime {
           persist(records.values)
         }
-        Rails.logger.info "#{persistence_time} seconds to persist"
+        $stdout.puts "\t#{persistence_time} seconds to persist"
       }
 
-      Rails.logger.info "Time Elapsed: #{time} seconds."
-      Rails.logger.info "Records accepted: #{records.count}."
-      Rails.logger.info "Records discarted: #{discarted}."
+      $stdout.puts "==================================================="
+      $stdout.puts "Time Elapsed:\t\t#{time} seconds."
+      $stdout.puts "Records accepted:\t#{records.count}."
+      $stdout.puts "Records discarted:\t#{discarted}."
+      $stdout.puts "==================================================="
     end
 
     def persist(records)

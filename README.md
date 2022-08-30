@@ -1,55 +1,141 @@
 # Geolocation
 
-I configured the postgreSQL in order to accept 500 connections and set the
-database connection pool to 400.
-
-1. Develop a library/component with two main features:
-  * A service that parses the CSV file containing the raw data and persists it in a database;
-  * An interface to provide access to the geolocation data (model layer);
-2. Develop a REST API that uses the aforementioned library to expose the geolocation data.
-
-In doing so:
-
-1. Define a data format suitable for the data contained in the CSV file;
-2. Sanitise the entries: the file comes from an unreliable source, this means
-   that the entries can be duplicated, may miss some value, the value can not
-   be in the correct format or completely bogus;
-3. At the end of the import process, return some statistics about the time
-   elapsed, as well as the number of entries accepted/discarded;
-4. The library should be configurable by an external configuration
-   (particularly with regards to the DB configuration);
-5. The API layer should implement a single HTTP endpoint that, given an IP
-   address, returns information about the IP address' location (e.g. country,
-   city).
-
-## Expected outcome and shipping:
-
-1. A library/component that packages the import service and the interface for
-   accessing the geolocation data;
-2. A REST API application that uses the aforementioned library.
-3. The API application is Dockerised.
-
-## What are the tradeoff
+This service provides an API for searching the geolocation of a given IP address.
 
 ## How the app works
 
-The app provides a rake task in order to import and persist the data from a given csv file or, by default, from the `public/data_dump.csv` file.
-The ip locations data are persisted on `ip_locations` table, which has the following columns:
-```
-ip_address inet not null,
-country_code string not null,
-country string not null,
-city string not null,
-latitude bigdecimal not null,
-longitude bigdecimal not null,
-mystery_value bigint,
+The application has two features:
+
+### An IP location data importer
+
+In order to provide the locations through an API the service expects the data
+to be imported somehow. There are two commands to do so, the first is by
+calling the importer service directly via rails console (`bin/rails c`)
+```ruby
+Locations::Importer
+  .new(validator: Locations::Validator, persistence: IpLocation)
+  .import_from_csv_file('path/to/data_dump.csv')
 ```
 
-The rake task call the importer service that performs the data load and validation, generating as result a collection of valid arguments to be persisted.
-In order to validate the data, the importer uses the validator service, which enforce that each hash of arguments hash the apropriated collection of valid data
-THe validator returns a Boolean informing the caller that the given parameters are either valid or invalid
+The seconds and simpler way is via rake task
 
-Being valid the argument, the importer will dispatch the batch creation of the ip location.
+```shell
+bin/rails data:import_from_csv_file
+```
+The expected outputs of this command are something like this:
+```
+[Rake task] importing data from /home/user/Projects/geolocation/public/data_dump.csv...
+checking and storing...
+        45.61293563199979 seconds to validate
+        70.36877059100152 seconds to persist
+===================================================
+Time Elapsed:           115.98174604300038 seconds.
+Records accepted:       866449.
+Records discarted:      133551.
+===================================================
+[Rake task] completed in 116.16331850899951 seconds
+```
+
+Both of them accepts a CSV file path as input and expect its content to be in the
+following format in order to perform the data load operation properly:
+
+```csv
+ip_address,country_code,country,city,latitude,longitude,mystery_value
+200.106.141.15,SI,Nepal,DuBuquemouth,-84.87503094689836,7.206435933364332,7823011346
+160.103.7.140,CZ,Nicaragua,New Neva,-68.31023296602508,-37.62435199624531,7301823115
+70.95.73.73,TL,Saudi Arabia,Gradymouth,-49.16675918861615,-86.05920084416894,2559997162
+,PY,Falkland Islands (Malvinas),,75.41685191518815,-144.6943217219469,0
+125.159.20.54,LI,Guyana,Port Karson,-78.2274228596799,-163.26218895343357,1337885276
+```
+
+If no arguments were given to the rake task, it will take the following file path by default;
+```ruby
+Rails.root.join('public/data_dump.csv')
+```
+
+### An HTTP Endpoint for searching a geolocation by an IP address.
+
+The requests can be done locally by running the following:
+
+```
+curl 'http://localhost:3000/api/v1/ip_locations?ip_address=125.159.20.54' | python -m json.tool
+```
+
+#### HTTP/1.1 200 OK
+
+In the case of the location be found, the expected response follows this format:
+
+```json
+{
+    "ip_location": {
+        "ip_address": "125.159.20.54",
+        "city": "Port Karson",
+        "country": "Guyana",
+        "country_code": "LI",
+        "latitude": -78.2274228596799,
+        "longitude": -163.26218895343357,
+        "mystery_value": 1337885276
+    }
+}
+```
+
+However, often things goes wrong, so that the service tries to catch two failure scenarios.
+
+#### HTTP/1.1 404 Not Found
+
+If the IP location hasn't been imported to the service yet
+
+```
+curl 'http://localhost:3000/api/v1/ip_locations?ip_address=125.159.20.5' | python -m json.tool
+```
+
+The following response is expected:
+
+```json
+{
+    "error": {
+        "message": "No location found for `ip_address`: 125.159.20.5."
+    }
+}
+```
+
+#### HTTP/1.1 422 Unprocessable Entity
+
+In the case the `ip_address` parameter contains an invalid value
+
+```
+curl 'http://localhost:3000/api/v1/ip_locations?ip_address=125.159205' | python -m json.tool
+```
+
+The following response is expected instead:
+
+```json
+{
+    "error": {
+        "message": "`ip_address`: 125.159205 is an invalid IP Address."
+    }
+}
+```
+
+The absence of the `ip_address` is considered an invalid value
+
+```
+curl 'http://localhost:3000/api/v1/ip_locations' | python -m json.tool
+```
+
+And wil result in:
+
+```json
+{
+    "error": {
+        "message": "`ip_address`: nil is an invalid IP Address."
+    }
+}
+```
+
+## What are the tradeoff
+
+TODO...
 
 ## How to setup the app
 
@@ -57,19 +143,34 @@ Being valid the argument, the importer will dispatch the batch creation of the i
 3.1.2
 
 * System dependencies
-postgresql-devel
-libpq-dev
+[docker](https://docs.docker.com/engine/install/)
 
 * Configuration
 
+Things with docker are very simple, so it's enough to run
+
+```
+docker compose up
+```
+
+in order to have the API server up and running
+
 * Database creation
 
-* Database initialization
+The setup of the database can done by run
+
+```
+docker compose exec -it app bin/rails db:prepare
+```
 
 * How to run the test suite
 
-* Services (job queues, cache servers, search engines, etc.)
+Simple like this:
+
+```
+docker compose exec -it app rspec
+```
 
 * Deployment instructions
 
-* ...
+TODO...
