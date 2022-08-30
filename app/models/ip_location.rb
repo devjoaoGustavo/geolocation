@@ -1,0 +1,2 @@
+class IpLocation < ApplicationRecord
+end
