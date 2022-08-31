@@ -4,17 +4,18 @@ This service provides an API for searching the geolocation of a given IP address
 
 ## How the app works
 
-The application has two features:
+The application has two features, an IP location importer and a HTTP API for searching IP locations.
 
-### An IP location data importer
+### The IP location data importer
 
 In order to provide the locations through an API the service expects the data
-to be imported somehow. There are two commands to do so, the first is by
-calling the importer service directly via rails console (`bin/rails c`)
+to be imported somehow. There are two way to do so, the first one is by
+calling the importer service directly via rails console (`bin/rails c`). It's
+not recommended as the service already provides a simpler interface.
 ```ruby
 Locations::Importer
   .new(validator: Locations::Validator, persistence: IpLocation)
-  .import_from_csv_file('path/to/data_dump.csv')
+  .import_from_csv_file('public/data_dump.csv')
 ```
 
 The seconds and simpler way is via rake task
@@ -53,7 +54,7 @@ If no arguments were given to the rake task, it will take the following file pat
 Rails.root.join('public/data_dump.csv')
 ```
 
-### An HTTP Endpoint for searching a geolocation by an IP address.
+### The HTTP API for searching IP location.
 
 The requests can be done locally by running the following:
 
@@ -133,7 +134,7 @@ And wil result in:
 }
 ```
 
-## What are the tradeoff
+## Tradeoffs
 
 TODO...
 
