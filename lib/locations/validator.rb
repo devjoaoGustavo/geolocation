@@ -6,40 +6,38 @@ module Locations
 
     class << self
       ##
-      # @param location_row [CSV::Row]
+      # @param ip_address [String]
+      # @param country_code [String]
+      # @param country [String]
+      # @param city [String]
+      # @param latitude [String]
+      # @param longitude [String]
+      # @param mystery_value [String]
       # @return [Boolean]
-      def valid?(location_row)
-        all_fields_valid?(location_row)
+      def valid?(*params)
+        return false if params.count < 7
+        return false unless valid_ip_address?(params[0])
+        return false if params[1].nil? || params[1].empty?
+        return false if params[2].nil? || params[2].empty?
+        return false if params[3].nil? || params[3].empty?
+        return false unless valid_coordinate?(params[4])
+        return false unless valid_coordinate?(params[5])
+
+        valid_integer?(params[6])
       end
 
       private
 
-      def all_fields_valid?(location_row)
-        return false unless valid_ip_address?(location_row['ip_address'])
-        return false if location_row['country_code'].nil?
-        return false if location_row['country'].nil?
-        return false if location_row['city'].nil?
-        return false unless valid_coordinate?(location_row['latitude'])
-        return false unless valid_coordinate?(location_row['longitude'])
-        return false unless valid_integer?(location_row['mystery_value'])
-
-        true
-      end
-
       def valid_ip_address?(ip_address)
         IPAddr.new(ip_address)
         true
-      rescue IPAddr::InvalidAddressError, IPAddr::AddressFamilyError
+      rescue IPAddr::Error
         false
       end
 
-      def valid_coordinate?(value)
-        value.to_f.to_s == value
-      end
+      def valid_coordinate?(value) = value.to_f.to_s == value
 
-      def valid_integer?(value)
-        value.to_i.to_s == value
-      end
+      def valid_integer?(value) = value.to_i.to_s == value
     end
   end
 end

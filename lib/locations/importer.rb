@@ -3,9 +3,6 @@ require 'benchmark'
 
 module Locations
   class Importer
-    PERSISTENCE_BATCH_SIZE = 200_000
-    private_constant :PERSISTENCE_BATCH_SIZE
-
     attr_reader :validator, :persistence
 
     ##
@@ -20,40 +17,50 @@ module Locations
     # @param filename [String]
     def import_from_csv_file(filename)
       discarted = 0
-      records = {}
-      seen = {}
+      accepted = {}
+      header = nil
+      validation_time = 0
+      persistence_time = 0
 
-      $stdout.puts 'checking and storing...'
-      time = Benchmark.realtime {
-        validation = Benchmark.realtime {
-          CSV.foreach(filename, headers: true) do |row|
-            ip_address = row['ip_address']
-            next discarted += 1 if seen[ip_address]
+      $stdout.puts 'Importing data'
+      total_time = Benchmark.realtime {
+        $stdout.puts "validating... "
+        validation_time = Benchmark.realtime {
+          ##
+          # ip_address, country_code, country, city, latitude, longitude, mystery_value
+          CSV.foreach(filename) do |row|
+            ip_address, _ = row
+            next header = row if header?(ip_address)
+            next discarted += 1 if accepted[ip_address].nil? && !validator.valid?(*row)
 
-            seen[ip_address] = true
-            next discarted += 1 unless validator.valid?(row)
-
-            records[ip_address] = row.to_h
+            accepted[ip_address] = row
           end
         }
-        $stdout.puts "\t#{validation} seconds to validate"
+        $stdout.puts 'persisting... '
         persistence_time = Benchmark.realtime {
-          persist(records.values)
+          persist(accepted.values.map { |values| header.zip(values).to_h })
+          $stdout.puts "done."
         }
-        $stdout.puts "\t#{persistence_time} seconds to persist"
       }
 
-      $stdout.puts "==================================================="
-      $stdout.puts "Time Elapsed:\t\t#{time} seconds."
-      $stdout.puts "Records accepted:\t#{records.count}."
-      $stdout.puts "Records discarted:\t#{discarted}."
-      $stdout.puts "==================================================="
+      print_stats(total_time, validation_time, persistence_time, accepted.count, discarted)
     end
 
-    def persist(records)
-      records.each_slice(PERSISTENCE_BATCH_SIZE) do |batch|
-        persistence.insert_all batch, returning: false
-      end
+    private
+
+    def header?(ip_address) = ip_address == 'ip_address'
+
+    def persist(records) = persistence.insert_all(records)
+
+    def print_stats(total_time, validation_time, persistence_time, accepted, discarted)
+      $stdout.puts "==================================================="
+      $stdout.puts "Time Elapsed: #{total_time.to_f} seconds"
+      $stdout.puts "\tValidation: #{validation_time} seconds"
+      $stdout.puts "\tPersistence: #{persistence_time} seconds"
+      $stdout.puts "Records processed: #{accepted + discarted}"
+      $stdout.puts "\tAccepted: #{accepted}"
+      $stdout.puts "\tDiscarted: #{discarted}"
+      $stdout.puts "==================================================="
     end
   end
 end
