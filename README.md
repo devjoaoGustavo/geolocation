@@ -183,17 +183,18 @@ uniqueness of primary key, or something else that wasn't fully understood.
 It's enough to have the `docker` and `docker compose` installed on local machine to
 run this application.
 
-Execute the following command in order to run the Rails server
+Execute the following command in order to run the Rails server:
+
 ```
 docker compose up
 ```
 
 * Database creation
 
-The setup of the database can done by run
+The setup of the database can done by running:
 
 ```
-docker compose exec -it app bin/rails db:prepare
+docker compose exec -it app bin/rails db:create db:migrate
 ```
 
 * How to run the test suite
@@ -201,5 +202,5 @@ docker compose exec -it app bin/rails db:prepare
 Simple like this:
 
 ```
-docker compose run app 'bin/rails db:environment:test RAILS_ENV=test && rspec'
+docker compose run app 'bundle exec rspec'
 ```
