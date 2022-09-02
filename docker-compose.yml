@@ -1,0 +1,23 @@
+version: "3.9"
+services:
+  app:
+    build:
+      context: .
+    environment:
+      DATABASE_URL: 'postgresql://postgres:coisa123@db:5432/geolocation'
+    ports:
+      - "3000:3000"
+    depends_on:
+      - db
+    volumes:
+      - log:/var/app/log/
+  db:
+    image: postgres:14
+    environment:
+      - POSTGRES_PASSWORD=coisa123
+    volumes:
+      - pg_data:/var/lib/postgresql/data
+
+volumes:
+  pg_data:
+  log:
