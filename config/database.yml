@@ -2,13 +2,18 @@ default: &default
   adapter: postgresql
   encoding: unicode
   pool: <%= ENV.fetch("RAILS_MAX_THREADS") { 400 } %>
-  url: <%= ENV.fetch('DATABASE_URL') { "postgresql://coisa:coisa123@localhost:5432/geolocation_#{ENV['RAILS_ENV']}" } %>
+  username: coisa
+  password: coisa123
+  host: localhost
+  port: 5432
 
 development:
   <<: *default
+  database: geolocation_development
 
 test:
   <<: *default
+  database: geolocation_test
 
 production:
   <<: *default
