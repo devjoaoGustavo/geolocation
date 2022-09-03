@@ -31,7 +31,8 @@ module Locations
           CSV.foreach(filename) do |row|
             ip_address, _ = row
             next header = row if header?(ip_address)
-            next discarted += 1 if accepted[ip_address].nil? && !validator.valid?(*row)
+            next discarted += 1 if accepted[ip_address]
+            next discarted += 1 unless validator.valid?(*row)
 
             accepted[ip_address] = row
           end

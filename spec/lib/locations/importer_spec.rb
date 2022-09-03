@@ -50,7 +50,7 @@ RSpec.describe Locations::Importer do
         },
         {
            description: 'print records processed',
-           matching: /Records processed: 5/
+           matching: /Records processed: 6/
         },
         {
            description: 'print accepted records',
@@ -58,7 +58,7 @@ RSpec.describe Locations::Importer do
         },
         {
            description: 'print discarted records',
-           matching: /Discarted: 0/
+           matching: /Discarted: 1/
         }
       ].each do |conditions|
         it conditions[:description] do
